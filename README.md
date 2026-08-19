@@ -9,7 +9,7 @@
 ## 安装
 
 ```sh
-dsh plugin --profile web add dsh-weinao
+dsh plugin --profile web add @ghogiel/dsh-weinao
 ```
 
 或者不通过 plugin 命令，把下面这几行加进你的 profile 的 `cordis.patch.yml`：
@@ -17,10 +17,8 @@ dsh plugin --profile web add dsh-weinao
 ```yaml
 - insert:
     - id: dsh-weinao
-      name: 'dsh-weinao'
+      name: '@ghogiel/dsh-weinao'
 ```
-
-> npm 包名说明：目前是 `dsh-weinao`。发布到 npm 后如需带 scope（如 `@你的用户名/dsh-weinao`），安装命令会相应变化。
 
 ## 功能
 
@@ -65,7 +63,7 @@ dsh plugin --profile web add dsh-weinao
 ```yaml
 - insert:
     - id: dsh-weinao
-      name: 'dsh-weinao'
+      name: '@ghogiel/dsh-weinao'
       config:
         glossaryDir: /data/hema
         sectionOrder: 900

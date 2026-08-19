@@ -1,5 +1,5 @@
 {
-  "name": "dsh-weinao",
+  "name": "@ghogiel/dsh-weinao",
   "description": "维脑 Agent (Weinao) — HEMA (Historical European Martial Arts) literature research tools for DeepSeek Harness: search and read Wiktenauer pages, maintain a bilingual glossary, and produce cited research reports",
   "version": "0.1.0",
   "type": "module",
