@@ -1,0 +1,21 @@
+# Build output
+lib/
+
+# Dependencies
+node_modules/
+
+# Test output
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/
+.DS_Store
+
+# Env
+.env
+.env.local
