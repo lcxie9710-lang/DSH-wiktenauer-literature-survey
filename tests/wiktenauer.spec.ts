@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { htmlToText } from '../src/wiktenauer.ts'
+import { htmlToText, USER_AGENT } from '../src/wiktenauer.ts'
 
 describe('htmlToText', () => {
   it('strips tags and preserves paragraph boundaries', () => {
@@ -24,5 +24,16 @@ describe('htmlToText', () => {
 
   it('handles empty input', () => {
     expect(htmlToText('')).toBe('')
+  })
+})
+
+describe('USER_AGENT', () => {
+  it('is pure ASCII so undici fetch accepts it as a header value', () => {
+    // Regression guard for the "Unable to connect to Wiktenauer API" bug:
+    // any code point > 0xff makes fetch throw a local TypeError that was
+    // previously misreported as a network outage.
+    for (const ch of USER_AGENT) {
+      expect(ch.charCodeAt(0)).toBeLessThanOrEqual(0xff)
+    }
   })
 })

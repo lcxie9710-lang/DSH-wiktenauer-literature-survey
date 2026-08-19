@@ -8,7 +8,13 @@
  */
 
 export const WIKI_API_BASE = 'https://wiktenauer.com/api.php'
-export const USER_AGENT = 'dsh-weinao/0.1.0 (维脑 Agent HEMA research plugin)'
+
+/**
+ * MUST be pure ASCII (Latin-1): undici `fetch` throws a `TypeError` for
+ * header values containing code points > 0xff. A Chinese product name in
+ * here would make every request fail before it leaves the process.
+ */
+export const USER_AGENT = 'dsh-weinao/0.1.2 (Weinao Agent HEMA research plugin)'
 export const TIMEOUT_SECONDS = 15
 
 /** One full-text search hit. */
@@ -46,9 +52,16 @@ async function makeRequest(params: Record<string, string>): Promise<unknown> {
       throw new Error('Error: Wiktenauer API request timed out after 15 seconds')
     }
     if (error instanceof TypeError) {
-      throw new Error(
-        'Error: Unable to connect to Wiktenauer API. The service may be temporarily unavailable.',
-      )
+      // undici network failures surface as `TypeError: fetch failed` (with
+      // the underlying cause nested). Distinguish them from *local* TypeErrors
+      // such as an invalid header value so a code bug is not reported as an
+      // outage on the Wiktenauer side.
+      if (error.message.includes('fetch failed')) {
+        throw new Error(
+          'Error: Unable to connect to Wiktenauer API. The service may be temporarily unavailable.',
+        )
+      }
+      throw new Error(`Error: Wiktenauer API request invalid: ${error.message}`)
     }
     throw error
   } finally {

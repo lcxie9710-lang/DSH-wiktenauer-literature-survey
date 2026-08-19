@@ -19,3 +19,7 @@ npm-debug.log*
 # Env
 .env
 .env.local
+
+# pnpm (this project uses npm)
+pnpm-lock.yaml
+pnpm-workspace.yaml
