@@ -40,31 +40,28 @@ export const Config: z<Config> = z.object({
 })
 
 const WORKFLOW_SECTION = `
-# HEMA Literature Research Workflow
+# HEMA Literature Research Tools
 
-You are a HEMA (Historical European Martial Arts) literature research assistant.
-You search Wiktenauer and synthesize findings into research reports with citations.
-You are NOT a martial arts instructor — you are a literature retrieval and synthesis tool.
+These tools query the Wiktenauer library of historical European martial arts
+treatises. Use them when the user asks a HEMA-related question, or when you
+need to look up historical fighting manuals, techniques, or masters. They are
+ordinary tools: your role and conversation policy are unchanged, and you use
+these tools only when they help answer the user's actual question.
 
-## Mandatory workflow
+## Using the tools
 
-For EVERY question, follow this exact sequence:
-
-1. Identify search terms (translate Chinese/modern terms to historical terms if needed).
-2. Call wiki_search with those terms.
-3. Call wiki_get_page on the most relevant results.
-4. If initial search fails, try wiki_prefix_search or wiki_get_links.
-5. Synthesize findings into a research report with citations.
-6. Always cite sources: every factual claim must have [Page Title] after it.
+1. To answer a HEMA question, search first: call wiki_search with historical
+   or English search terms (translate modern or Chinese terms if needed).
+2. Read the most relevant result with wiki_get_page.
+3. If search returns nothing, try wiki_prefix_search with a shorter prefix, or
+   wiki_get_links on a related page.
+4. When you cite facts from these tools, name the source page.
 
 ## Rules
 
-- You MUST call wiki_search at least once per question. NEVER answer from memory alone.
-- If wiki_search returns results, you MUST call wiki_get_page on at least one result.
-- If wiki_search returns empty, try wiki_prefix_search with shorter prefixes.
-- Use wiki_get_links to discover related pages.
-- If the question is NOT about HEMA, do NOT call any tools; answer:
-  抱歉，我暂时不擅长回答这样的问题，请发送 HEMA（历史欧洲武术）领域相关的问题。
+- Only call these tools when they are relevant to the user's question.
+- For non-HEMA questions, answer normally; do not refuse, and do not force a
+  Wiktenauer lookup.
 `.trim()
 
 export function apply(ctx: Context, config: Config = {}): void {

@@ -1,8 +1,8 @@
 # 维脑 Agent (Weinao) — dsh-weinao
 
-维脑 Agent 是面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 **HEMA（历史欧洲武术）文献研究插件**。
+维脑 Agent 是面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 **HEMA（历史欧洲武术）文献检索工具插件**。
 
-它把任何 dsh agent 变成一个 **Wiktenauer 文献研究助手**：搜索并阅读 [Wiktenauer](https://wiktenauer.com) 武术古籍文库、维护本地双语（中↔德/英）术语表、教会模型"先检索、再引用"的研究工作流。
+它为 dsh agent 提供 **Wiktenauer 文献检索能力**：搜索并阅读 [Wiktenauer](https://wiktenauer.com) 武术古籍文库、维护本地双语（中↔德/英）术语表。安装后，任何会话仍保持原本的角色和对话策略，只是在遇到 HEMA 相关问题时多了一套可用的查询工具。
 
 一切运行在**你的 dsh 进程本地**——没有服务器、没有额外 API key（除了 dsh 本身的模型凭据）、没有第三方服务。插件直接对接 Wiktenauer 公共 MediaWiki API。
 
@@ -33,13 +33,14 @@ dsh plugin --profile web add @ghogiel/dsh-weinao
 
 每个工具返回**结构化规范值**（不是散文），模型看到的是渲染后的文本，程序化调用方拿到的是干净数据。
 
-### 领域工作流（prompt 分区）
+### 工具使用指引（prompt 分区）
 
-插件注册 `hema-workflow` prompt 分区，它：
+插件注册 `hema-workflow` prompt 分区，它只做一件事——告诉模型**这些 wiki 工具何时用**，不改动会话原本的角色或对话策略：
 
-- 强制"搜索 → 读页 → 综合 → 引用"的流程
-- 要求每条事实声明后带 `[Page Title]` 引用
-- 非 HEMA 问题直接礼貌拒绝（不调用工具）
+- 说明工具用于查询 Wiktenauer 武术古籍库，在用户问 HEMA 相关问题（或需要查古籍、技术、大师）时使用
+- 给出查找方法：先 `wiki_search`（可翻译中文/现代术语为历史术语）→ 读最相关结果 `wiki_get_page` → 空结果时回退 `wiki_prefix_search` / `wiki_get_links`
+- 要求引用来源时注明页面
+- **不**声明模型是 HEMA 助手、**不**强制所有问题走检索流程、**不**拒绝非 HEMA 问题
 - 注入当前术语表上下文（已确认映射标为可信，推断映射标为待确认）
 
 ### 本地术语表
@@ -91,7 +92,7 @@ node --experimental-strip-types -e "import('./src/wiktenauer.ts').then(m => m.wi
 已对 Wiktenauer 真实 API 验证（搜索 / 读页 / 前缀搜索 / 链接 / 缺失页错误），并对照已发布的
 `@deepseek-ai/dsh-tools@0.1.0-rc.7` / `@deepseek-ai/dsh-session@0.1.0-rc.7` /
 `@deepseek-ai/cordis@4.0.1` 类型定义做过类型检查（即 `@deepseek-ai/dsh` 随附的版本）。
-注意：全文搜索只匹配 Wiktenauer 上的精确拼写——历史变体（如 `Zwerchhau` 对应 Wiktenauer 的 `Zwerchhaw`）会返回空，这正是模型应该回退到 `wiki_prefix_search` 的时刻（工作流 prompt 已教给模型）。
+注意：全文搜索只匹配 Wiktenauer 上的精确拼写——历史变体（如 `Zwerchhau` 对应 Wiktenauer 的 `Zwerchhaw`）会返回空，这正是模型应该回退到 `wiki_prefix_search` 的时刻（工具使用指引已提示模型）。
 
 ## 许可
 
