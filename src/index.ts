@@ -5,9 +5,14 @@
  * that teaches the model the domain workflow (search → read → synthesize →
  * cite) and injects the user's term-mapping context.
  *
- * Installable as a bundle:
- *   dsh plugin --profile web add @wiktenauer-literature-survey/dsh-weinao
- * or by inserting its cordis.patch.yml rows into your profile.
+ * Installable as a plain preset plugin (dsh 0.1.2+): this package declares no
+ * `dsh.bundle` and ships no cordis.patch.yml. Model-facing rows live in an
+ * agent preset — copy a shipped preset (e.g. standard) into
+ * `$DSH_HOME/.agent-presets/<id>/` and add a row:
+ *   - id: weinao
+ *     name: '@ghogiel/dsh-weinao'
+ * The package itself is installed as an ordinary dependency of the profile
+ * (`dsh plugin --profile web add @ghogiel/dsh-weinao`).
  */
 
 import type { Context } from '@deepseek-ai/cordis'
@@ -28,8 +33,10 @@ export interface Config {
    */
   glossaryDir?: string
   /**
-   * Prompt-section order for the HEMA workflow section (default 1000).
-   * Lower runs earlier; the persona is order 0.
+   * Prompt-section order for the HEMA workflow section (default 3000).
+   * dsh 0.1.2 reserves 1000-2900 for built-in tool guidance and 5000 for the
+   * tools SDK; 3000 places this section after tool guidance, before the SDK.
+   * Lower runs earlier.
    */
   sectionOrder?: number
 }
@@ -73,7 +80,7 @@ export function apply(ctx: Context, config: Config = {}): void {
   // Domain workflow + glossary context as one ordered prompt section.
   ctx.systemPrompt.section({
     name: 'hema-workflow',
-    order: config.sectionOrder ?? 1000,
+    order: config.sectionOrder ?? 3000,
     text: () => {
       const context = glossary.getContextForPrompt()
       return context === '（术语表为空，无已知映射）'

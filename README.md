@@ -8,16 +8,47 @@
 
 ## 安装
 
+> dsh 0.1.2+ 按 **agent preset** 组织每个会话的模型面工具。weinao 是纯 agent
+> 平面插件，**不声明 `dsh.bundle`、不提供 cordis.patch.yml**——按官方规范，
+> 工具行由你复制出的 preset 挂载，而不是注册进 host 全局层（那会把工具漏给
+> 每一个 preset，包括极简模式）。
+
+### 1. 安装包（作为 profile 的普通依赖）
+
 ```sh
 dsh plugin --profile web add @ghogiel/dsh-weinao
 ```
 
-或者不通过 plugin 命令，把下面这几行加进你的 profile 的 `cordis.patch.yml`：
+包不声明 `dsh.bundle`，`dsh plugin` 会提示 "activates no layer"——这是预期
+且正确的：包只作为依赖存在，不参与 host 组合层叠，`dsh.profile.bundles`
+保持不变。
+
+### 2. 复制一个 preset 并挂载 weinao
+
+shipped preset 是只读基线，复制到用户自建根再编辑：
+
+```sh
+# 复制 standard → 用户自建根（或在 GUI 预设管理里复制）
+cp -r <dsh安装>/node_modules/@deepseek-ai/dsh-agent-presets/presets/standard \
+      ~/.dsh/.agent-presets/hema
+```
+
+在 `~/.dsh/.agent-presets/hema/agent.cordis.yml` 末尾追加：
 
 ```yaml
-- insert:
-    - id: dsh-weinao
-      name: '@ghogiel/dsh-weinao'
+# ── 维脑 HEMA 文献工具（仅本 preset 可见）────────────
+- id: weinao
+  name: '@ghogiel/dsh-weinao'
+  config:
+    sectionOrder: 3000
+```
+
+新建会话时选择该 preset 即有 wiki 工具；官方 preset（极简/标准/cordis/ptc）
+保持纯净。也可在 `~/.dsh/settings.yaml` 设默认：
+
+```yaml
+agent-presets:
+  default: hema
 ```
 
 ## 功能
@@ -57,17 +88,16 @@ dsh plugin --profile web add @ghogiel/dsh-weinao
 | 键 | 默认值 | 含义 |
 |---|---|---|
 | `glossaryDir` | `$DSH_HOME/wiktenauer` | 术语表 JSON 文件所在目录 |
-| `sectionOrder` | `1000` | prompt 分区顺序（越小越靠前；persona 是 0） |
+| `sectionOrder` | `3000` | prompt 分区顺序（dsh 0.1.2：1000–2900 是内置工具段、5000 是 SDK 段；3000 位于其后、SDK 之前） |
 
-示例：
+示例（在 preset 的 `agent.cordis.yml` 里）：
 
 ```yaml
-- insert:
-    - id: dsh-weinao
-      name: '@ghogiel/dsh-weinao'
-      config:
-        glossaryDir: /data/hema
-        sectionOrder: 900
+- id: weinao
+  name: '@ghogiel/dsh-weinao'
+  config:
+    glossaryDir: /data/hema
+    sectionOrder: 3000
 ```
 
 ## 项目起源
@@ -89,9 +119,9 @@ wiki 客户端和术语表零依赖（Node 内置 + 全局 `fetch`），纯逻�
 node --experimental-strip-types -e "import('./src/wiktenauer.ts').then(m => m.wikiSearch('Liechtenauer', 2)).then(r => console.log(r))"
 ```
 
-已对 Wiktenauer 真实 API 验证（搜索 / 读页 / 前缀搜索 / 链接 / 缺失页错误），并对照已发布的
-`@deepseek-ai/dsh-tools@0.1.0-rc.7` / `@deepseek-ai/dsh-session@0.1.0-rc.7` /
-`@deepseek-ai/cordis@4.0.1` 类型定义做过类型检查（即 `@deepseek-ai/dsh` 随附的版本）。
+已对 Wiktenauer 真实 API 验证（搜索 / 读页 / 前缀搜索 / 链接 / 缺失页错误），并对照
+`@deepseek-ai/dsh-tools@0.1.2-rc.1` / `@deepseek-ai/dsh-session@0.1.2-rc.1` /
+`@deepseek-ai/cordis@4.0.2` 类型定义做过类型检查。
 注意：全文搜索只匹配 Wiktenauer 上的精确拼写——历史变体（如 `Zwerchhau` 对应 Wiktenauer 的 `Zwerchhaw`）会返回空，这正是模型应该回退到 `wiki_prefix_search` 的时刻（工具使用指引已提示模型）。
 
 ## 许可
