@@ -14,13 +14,12 @@ import {
   wikiPrefixSearch,
   wikiSearch,
 } from './wiktenauer.js'
-import type { GlossaryStore } from './glossary.js'
 
 function renderError(message: string): string {
   return `Error: ${message}`
 }
 
-export function registerWikiTools(ctx: Context, _glossary: GlossaryStore) {
+export function registerWikiTools(ctx: Context) {
   ctx.tools.register(defineTool({
     name: 'wiki_search',
     description:

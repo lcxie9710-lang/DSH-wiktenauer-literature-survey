@@ -39,11 +39,10 @@ cp -r <dsh安装>/node_modules/@deepseek-ai/dsh-agent-presets/presets/standard \
 # ── 维脑 HEMA 文献工具（仅本 preset 可见）────────────
 - id: weinao
   name: '@ghogiel/dsh-weinao'
-  config:
-    sectionOrder: 3000
+  config: {}
 ```
 
-新建会话时选择该 preset 即有 wiki 工具；官方 preset（极简/标准/cordis/ptc）
+新建会话时选择该 preset 即有 HEMA 工具；官方 preset（极简/标准/cordis/ptc）
 保持纯净。也可在 `~/.dsh/settings.yaml` 设默认：
 
 ```yaml
@@ -51,9 +50,14 @@ agent-presets:
   default: hema
 ```
 
+> **升级提示**：shipped preset 会随 dsh 版本变化。例如 0.1.5 把 `dsh-persona`
+> 的 `text` 改成了必填的 `prefix`（+ 可选 `suffix`），并新增了 `present` 工具行。
+> dsh 升级后自建 preset 若报 `invalid config: $.prefix missing required value`，
+> 按当前 shipped `standard` 重新复制一次再追加 weinao 行即可。
+
 ## 功能
 
-### 四个工具
+### 六个工具
 
 | 工具 | 作用 | 什么时候用 |
 |---|---|---|
@@ -61,34 +65,37 @@ agent-presets:
 | `wiki_get_page` | 读取某页完整纯文本（精确标题匹配） | 搜索后，读最佳命中页 |
 | `wiki_prefix_search` | 前缀标题搜索 | 术语消歧、拼写变体、空搜索结果兜底 |
 | `wiki_get_links` | 获取某页的内部链接 | 发现关联古籍/概念 |
+| `glossary_lookup` | 按需查询本地术语表（某词的全部映射，含置信度与状态） | 翻译 HEMA 术语前，保持既有译法一致 |
+| `glossary_add` | 记录新推断的术语映射（标记为待确认） | 术语表无该词、且已推断出译法时 |
 
 每个工具返回**结构化规范值**（不是散文），模型看到的是渲染后的文本，程序化调用方拿到的是干净数据。
 
-### 工具使用指引（prompt 分区）
+### 工具使用指引
 
-插件注册 `hema-workflow` prompt 分区，它只做一件事——告诉模型**这些 wiki 工具何时用**，不改动会话原本的角色或对话策略：
-
-- 说明工具用于查询 Wiktenauer 武术古籍库，在用户问 HEMA 相关问题（或需要查古籍、技术、大师）时使用
-- 给出查找方法：先 `wiki_search`（可翻译中文/现代术语为历史术语）→ 读最相关结果 `wiki_get_page` → 空结果时回退 `wiki_prefix_search` / `wiki_get_links`
-- 要求引用来源时注明页面
-- **不**声明模型是 HEMA 助手、**不**强制所有问题走检索流程、**不**拒绝非 HEMA 问题
-- 注入当前术语表上下文（已确认映射标为可信，推断映射标为待确认）
+插件**不注入系统提示词分段**——工具的使用方法写在各自的 `description` 里，随
+工具 schema 自动进入提示词组装。这样插件不必与内置提示词段争抢排序位置，也不会
+给每次请求增加固定文本成本。
 
 ### 本地术语表
 
 双语术语映射存储（如 交击 → Zwerchhau），以纯 JSON 文件持久化在 `$DSH_HOME/wiktenauer/glossary.json`（或 `~/.dsh/wiktenauer/`）。
 
-- 模型推断出新翻译时自动追加（`llm_inferred`）
-- 用户确认的映射 `confidence +0.3` 并标记可信
+**按需查询，不全量注入**：术语表通过 `glossary_lookup` 查询、`glossary_add`
+记录。把整张表塞进 system prompt 会让每次请求的成本随术语表增长——这是刻意
+避免的设计。
+
+存储层支持的映射状态：
+
+- 模型推断出的新译法记为 `llm_inferred`（置信度 0.5，待用户确认）
+- 用户确认的映射 `confidence +0.3` 并标记为可信
 - 用户拒绝的映射扣置信度；累计 3 次拒绝后移除
-- prompt 上下文把已确认映射显示为「已确认术语映射（可信）」，推断映射显示为「LLM 推断映射（待确认，可用但必须告知用户）」
+- `glossary_add` 对同一源词拒绝重复添加，返回既有映射供复用
 
 ## 配置
 
 | 键 | 默认值 | 含义 |
 |---|---|---|
 | `glossaryDir` | `$DSH_HOME/wiktenauer` | 术语表 JSON 文件所在目录 |
-| `sectionOrder` | `3000` | prompt 分区顺序（dsh 0.1.2：1000–2900 是内置工具段、5000 是 SDK 段；3000 位于其后、SDK 之前） |
 
 示例（在 preset 的 `agent.cordis.yml` 里）：
 
@@ -97,7 +104,6 @@ agent-presets:
   name: '@ghogiel/dsh-weinao'
   config:
     glossaryDir: /data/hema
-    sectionOrder: 3000
 ```
 
 ## 项目起源
@@ -120,9 +126,9 @@ node --experimental-strip-types -e "import('./src/wiktenauer.ts').then(m => m.wi
 ```
 
 已对 Wiktenauer 真实 API 验证（搜索 / 读页 / 前缀搜索 / 链接 / 缺失页错误），并对照
-`@deepseek-ai/dsh-tools@0.1.2-rc.1` / `@deepseek-ai/dsh-session@0.1.2-rc.1` /
+`@deepseek-ai/dsh-tools@0.1.5-rc.2` / `@deepseek-ai/dsh-session@0.1.5-rc.2` /
 `@deepseek-ai/cordis@4.0.2` 类型定义做过类型检查。
-注意：全文搜索只匹配 Wiktenauer 上的精确拼写——历史变体（如 `Zwerchhau` 对应 Wiktenauer 的 `Zwerchhaw`）会返回空，这正是模型应该回退到 `wiki_prefix_search` 的时刻（工具使用指引已提示模型）。
+注意：全文搜索只匹配 Wiktenauer 上的精确拼写——历史变体（如 `Zwerchhau` 对应 Wiktenauer 的 `Zwerchhaw`）会返回空，这正是模型应该回退到 `wiki_prefix_search` 的时刻（工具 description 已提示模型）。
 
 ## 许可
 
