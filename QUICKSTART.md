@@ -37,7 +37,7 @@ Node 内置模块）。`pnpm install` 只是为了仓库根脚本方便，可以
 
 ## 2. 配 JEV 的 key
 
-JEV 走 Vercel AI Gateway。**放错位置不会报错**，只会让 JEV 调用全部失败，
+JEV 走 Vercel AI Gateway。**放错位置不会报错**，只会让 JEV 调用全部失败，vercel官网为https://vercel.com/ai-gateway
 症状和"没配 key"一模一样 —— 所以这一步别跳。
 
 ### GUI / preset 路径（你实际用的那条）
