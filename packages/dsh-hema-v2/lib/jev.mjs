@@ -43,6 +43,35 @@ export const SUPPORT_VERDICTS = [
   'SUPPORTED', 'PARTIALLY_SUPPORTED', 'CONTRADICTED', 'NOT_IN_SOURCE', 'AMBIGUOUS',
 ]
 
+/**
+ * C 组 · `on_topic_*` 的三选项。
+ *
+ * **为什么不用 boolean。** 原来问的是"断言是否仍在回答原子命题（是/否）"，
+ * 阈值 0.7 在那道题上**没有参考性**：一次真实 run 的 12 次验证调用、120 条断言里，
+ * 中位数 0.78、55–58% 落在 0.55–0.85 这条带里，而且**同一 state 问两遍有 31% 的判定翻转**
+ * —— 噪声底比阈值带还宽。
+ *
+ * 拆成三个独立二元判断更糟（影子测试，同 state 重问 120 条）：
+ * `answers_atom` 只 5% 通过、`same_scope` **0%** 通过（都会否掉几乎全部合法断言），
+ * `self_contained` 98% 通过（饱和，白花配额）。极性对照证实那道题本身是对称的
+ * （正问 0.21 / 反问 0.67，平均和 0.898），所以低通过率不是问法坏，是**真实内容判断**：
+ * 这批断言 **88% 是"提供证据"而不是"直接回答"**。
+ *
+ * 于是如实把它变成三分类，判官就不必把一个三分类硬压成一个概率：
+ * 实测 answers 12 / evidence 106 / unrelated 2，p(answers+evidence) ≥ 0.7 覆盖 98%，
+ * 翻转区 0%、重复翻转 4%。**闸门取"非 unrelated"**（两个可接受选项的概率质量和 ≥ 0.7）。
+ *
+ * 选项措辞就是影子测试里用的那一版，没有改动 —— 换了措辞，上面这些数字就不再适用。
+ */
+export const ON_TOPIC_OPTIONS = {
+  answers: '断言直接回答了命题所问的问题',
+  evidence: '断言没有直接回答，但提供了回答该命题所需的证据材料',
+  unrelated: '断言与命题无关，或已经跑题',
+}
+
+/** `on_topic_*` 的可接受选项：**只有 `unrelated` 是不通过** */
+export const ON_TOPIC_ACCEPT = ['answers', 'evidence']
+
 const LOG_PATH = join(V2_ROOT, 'out', 'jev-log.jsonl')
 
 // ─────────────────────────────────────────────────────────────
@@ -102,9 +131,11 @@ export function claimQuestions(claims) {
       },
     }
     questions[`on_topic_${c.id}`] = {
-      type: 'boolean',
-      instructions: `断言「${c.claim}」是否仍然在回答原子命题「${c.subQuestion}」？（不是问它是否正确，而是问它有没有跑题或被削弱成废话）`,
-      criteria: { true: '仍在回答该原子命题', false: '已经偏离该原子命题，或已被削弱到失去信息量' },
+      type: 'choice',
+      instructions: `断言「${c.claim}」与原子命题「${c.subQuestion}」是什么关系？`
+        + '**不要**判断它是否正确（那是另一道题的事），也**不要**因为它是"材料/证据"而不是"结论"就判无关 —— '
+        + '只有真正跑题、或已被削弱到与命题无关，才选 unrelated。',
+      criteria: ON_TOPIC_OPTIONS,
     }
     questions[`specificity_${c.id}`] = {
       type: 'score',
@@ -191,6 +222,38 @@ export function passChoice(answer, target) {
 }
 
 /**
+ * choice 通过（**多可接受选项**版）：可接受选项的**概率质量和** ≥ 阈值。
+ *
+ * 为什么需要这一版：`on_topic` 是三分类，但其中两个（answers / evidence）都算通过。
+ * 拿 `passChoice` 去问"目标选项概率 ≥ 0.7"会把 88% 合法断言判死
+ * —— 它们本来就是 evidence 而不是 answers。
+ *
+ * 与 `passChoice` 一样**不**用 `||`：有 probabilities 时只认质量，
+ * 否则 `choice=answers` 但 p(answers)=0.3、p(evidence)=0.3、p(unrelated)=0.4
+ * 这种犹豫裁决会靠 argmax 蒙混过关。没有 probabilities 时才退回 argmax 归属。
+ */
+export function passChoiceMass(answer, acceptKeys) {
+  const probs = answer?.probabilities ?? {}
+  const keys = Object.keys(probs)
+  let mass = 0
+  let bestKey = null
+  let bestP = -1
+  for (const [k, v] of keys.length ? Object.entries(probs) : []) {
+    const p = typeof v === 'number' ? v : 0
+    if (acceptKeys.includes(k)) mass += p
+    if (p > bestP) { bestP = p; bestKey = k }
+  }
+  const chosen = answer?.choice ?? bestKey ?? null
+  const pass = keys.length ? mass >= THRESHOLD : acceptKeys.includes(chosen)
+  return {
+    pass, chosen,
+    mass: Number(mass.toFixed(4)),
+    probs, target: acceptKeys, threshold: THRESHOLD,
+    judgedBy: keys.length ? 'probability-mass' : 'argmax',
+  }
+}
+
+/**
  * score 通过：**可接受等级的概率质量和 ≥ 阈值**。
  *
  * 比"argmax 必须正好落在某一级"稳：概率摊在相邻两级时，质量法仍能正确通过。
@@ -241,11 +304,22 @@ export function judgeDecomposition(answers, subQuestions) {
 /** B+C 组总判定（每条断言） */
 export function judgeClaim(answers, claim) {
   const b = passChoice(answers[`support_${claim.id}`], 'SUPPORTED')
-  const onTopic = passBoolean(answers[`on_topic_${claim.id}`])
+  const onTopic = passChoiceMass(answers[`on_topic_${claim.id}`], ON_TOPIC_ACCEPT)
   const spec = passScore(answers[`specificity_${claim.id}`], SPECIFICITY_ACCEPT, SPECIFICITY_LABELS)
   const reasons = []
   if (!b.pass) reasons.push(`证据不支持（judged=${b.chosen}, p(SUPPORTED)=${b.p}）`)
-  if (!onTopic.pass) reasons.push(`已偏离原子命题（p=${onTopic.p}）`)
+  // 报出 judged 与 p(无关)：只说"跑题了"researcher 无从判断是判官犹豫还是真的无关。
+  //
+  // 这里必须分两种失败，否则会冤枉断言。真 JEV 实测抓到过一次：
+  // 断言「Zornhau 是一记自下向上的撩击」明显是在直接回答原子命题，
+  // 但 JEV 给了 answers 0.40 / evidence 0.27 / unrelated 0.33 —— `judged=answers`
+  // （argmax 站在可接受侧），质量 0.67 只差 0.03 没过。把它写成"与原子命题无关"
+  // 是**错的**，会把 researcher 引去改一个根本没问题的表述。
+  if (!onTopic.pass) {
+    reasons.push(onTopic.chosen === 'unrelated'
+      ? `与原子命题无关或已跑题（p(无关)=${onTopic.probs?.unrelated ?? '—'}，可接受选项质量=${onTopic.mass}）`
+      : `与命题的关系判定不确定（judged=${onTopic.chosen}，但可接受选项质量只有 ${onTopic.mass} < ${THRESHOLD}）`)
+  }
   if (!spec.pass) reasons.push(`断言过于空泛（可接受等级质量=${spec.mass}）`)
   return { pass: reasons.length === 0, support: b, onTopic, specificity: spec, reasons }
 }
@@ -283,7 +357,7 @@ function logRecord(rec, logPath = LOG_PATH) {
  *
  * 启发式（故意做得简单，只保证形状与单调性）：
  *   support      —— 断言归一化后的源语言词在证据文本里的命中率
- *   on_topic     —— 只判退化（断言无内容词）；漂移检测 stub 无能为力，交真 JEV
+ *   on_topic     —— 只判退化（断言无内容词）；真实漂移检测 stub 无能为力，交真 JEV
  *   specificity  —— 断言源语言词数
  *   relevance    —— 页面标题与原子命题的模糊共有词
  *   next         —— 候选标题与原子命题的模糊共有词中最高者
@@ -345,8 +419,13 @@ export function makeStubAnswers(state, questions) {
       else { verdict = 'NOT_IN_SOURCE'; probs = { SUPPORTED: 0.05, PARTIALLY_SUPPORTED: 0.1, AMBIGUOUS: 0.1, NOT_IN_SOURCE: 0.74, CONTRADICTED: 0.01 } }
       answers[id] = { type: 'choice', choice: verdict, probabilities: probs, confidence: 0.7 }
     } else if (id.startsWith('on_topic_')) {
-      const p = wordsOf(claimTextFor(id)).length >= 2 ? 0.9 : 0.3
-      answers[id] = { type: 'boolean', probability: p }
+      // 三分类。stub 只能判"退化"这一种跑题；answers 与 evidence 的区别 stub 判不出，
+      // 也**不需要**判出 —— 闸门取"非 unrelated"，两者同样通过。
+      // 默认给 evidence：真实 run 里 88% 的断言都是"提供证据"而不是"直接回答"。
+      const degenerate = wordsOf(claimTextFor(id)).length < 2
+      answers[id] = degenerate
+        ? { type: 'choice', choice: 'unrelated', probabilities: { answers: 0.05, evidence: 0.15, unrelated: 0.8 }, confidence: 0.8 }
+        : { type: 'choice', choice: 'evidence', probabilities: { answers: 0.15, evidence: 0.75, unrelated: 0.1 }, confidence: 0.7 }
     } else if (id.startsWith('specificity_')) {
       const n = wordsOf(claimTextFor(id)).length
       const idx = n >= 6 ? 3 : n >= 3 ? 2 : 1
@@ -446,6 +525,11 @@ export function makeFixtureAnswers(state, questions, acceptRate = 0.5) {
       for (const k of Object.keys(q.criteria ?? {})) probs[k] = 0
       probs.NONE = 1
       answers[id] = { type: 'choice', choice: 'NONE', probabilities: probs, confidence: 0.9 }
+    } else if (id.startsWith('on_topic_')) {
+      // 恒判 evidence（可接受侧）。理由：fixture 验的是**裁决路由**（接受/打回/冻结/悬置/汇总），
+      // 制造失败由 support 一路承担就够了；让 on_topic 也随机失败会把
+      // "这条为什么被打回"搅成两因混一，反而看不清路由。
+      answers[id] = { type: 'choice', choice: 'evidence', probabilities: { answers: 0.2, evidence: 0.7, unrelated: 0.1 }, confidence: 0.7 }
     } else if (id.startsWith('specificity_')) {
       const probabilities = {}
       for (let i = 0; i < SPECIFICITY_LABELS.length; i++) probabilities[String(i)] = i === 2 ? 0.8 : 0.0667
@@ -454,8 +538,6 @@ export function makeFixtureAnswers(state, questions, acceptRate = 0.5) {
       const probabilities = {}
       for (let i = 0; i < FOCUS_LABELS.length; i++) probabilities[String(i)] = i === 2 ? 0.8 : 0.05
       answers[id] = { type: 'score', score: 2, scoreLabel: FOCUS_LABELS[2], probabilities }
-    } else if (id.startsWith('answerable_')) {
-      answers[id] = { type: 'choice', choice: 'answerable', probabilities: { answerable: 0.9, unanswerable: 0.1 } }
     } else {
       answers[id] = { type: 'boolean', probability: 0.9 }
     }

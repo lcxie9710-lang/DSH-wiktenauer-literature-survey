@@ -17,6 +17,13 @@
  *     不测这个就无法区分"问法改进"和"采样噪声"）
  *
  * 用法：node packages/dsh-hema-v2/probes/probe-ontopic-shadow.mjs <run 目录> [--repeats 2]
+ *
+ * ⚠️ **这是改造前的测量工具。** 它的结论已经被采纳：`on_topic` 现在就是三选项
+ * choice（answers / evidence / unrelated），闸门取"非 unrelated" —— 见 `lib/jev.mjs`
+ * 的 `ON_TOPIC_OPTIONS` / `ON_TOPIC_ACCEPT` / `passChoiceMass`。因此：
+ *   · 新日志里 `answers.on_topic_*.probability` 不再存在 → 下面的 `old` 列会是 null；
+ *   · 想复测请拿一份改造前的 `jev-calls.jsonl`。
+ * 留着的价值：结论的依据在这里，而依据不该只存在于对话记录里。
  */
 
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs'

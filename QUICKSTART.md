@@ -111,7 +111,7 @@ npx @deepseek-ai/dsh web
 
 判断办法只能是**比对进程启动时间**：`Get-CimInstance Win32_Process` 看 `CreationDate`
 是不是早于你改代码的时间。为此插件带了**版本路标** —— 跑一次 `hema_start`，
-返回里有 `pluginVersion`，当前是 `0.2.0`。看到旧版本号 = 宿主还是旧进程。
+返回里有 `pluginVersion`，当前是 `0.2.1`。看到旧版本号 = 宿主还是旧进程。
 
 **还要开新会话**：已经开着的会话留在它当初的 preset 上，切 preset 不会换掉它。
 
@@ -184,7 +184,7 @@ node packages/dsh-hema-v2/probes/analyze-run.mjs out/sessions/<runId>
 ## 跑测试
 
 ```bash
-pnpm test        # 487 项断言，全离线，几十秒
+pnpm test        # 499 项断言，全离线，几十秒
 ```
 
 分套件：

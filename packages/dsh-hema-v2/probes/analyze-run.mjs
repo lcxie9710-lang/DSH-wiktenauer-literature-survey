@@ -156,8 +156,9 @@ const ver = byPhase.get('claim-verify') ?? []
 if (ver.length) {
   console.log('\n════════ 三、断言验证（B+C 组）════════')
   const sup = { SUPPORTED: [], PARTIALLY_SUPPORTED: [], CONTRADICTED: [], NOT_IN_SOURCE: [], AMBIGUOUS: [] }
-  const onTopic = [], specMass = []
+  const onTopicMass = [], specMass = []
   const choiceCount = {}
+  const onTopicChosen = {}
   for (const r of ver) {
     for (const [qid, a] of Object.entries(r.answers ?? {})) {
       if (qid.startsWith('support_')) {
@@ -165,7 +166,14 @@ if (ver.length) {
         for (const k of Object.keys(sup)) if (typeof probs[k] === 'number') sup[k].push(probs[k])
         choiceCount[a?.choice] = (choiceCount[a?.choice] ?? 0) + 1
       }
-      if (qid.startsWith('on_topic_')) onTopic.push(num(a?.probability))
+      if (qid.startsWith('on_topic_')) {
+        // on_topic 是三选项 choice，闸门取"非 unrelated" → 统计的就是这个质量和。
+        // 老日志里它是 boolean（只有 probability 字段），这里兼容地跳过。
+        const probs = a?.probabilities ?? {}
+        if (Object.keys(probs).length) onTopicMass.push((probs.answers ?? 0) + (probs.evidence ?? 0))
+        else if (typeof a?.choice === 'string') onTopicMass.push(a.choice === 'unrelated' ? 0 : 1)
+        if (typeof a?.choice === 'string') onTopicChosen[a.choice] = (onTopicChosen[a.choice] ?? 0) + 1
+      }
       if (qid.startsWith('specificity_')) {
         const probs = a?.probabilities ?? {}
         specMass.push((probs['2'] ?? 0) + (probs['3'] ?? 0))
@@ -178,7 +186,11 @@ if (ver.length) {
   report('support_* 的 p(SUPPORTED)', sup.SUPPORTED)
   report('support_* 的 p(NOT_IN_SOURCE)', sup.NOT_IN_SOURCE)
   report('support_* 的 p(PARTIALLY_SUPPORTED)', sup.PARTIALLY_SUPPORTED)
-  report('on_topic_* 的 p(true)', onTopic)
+  if (Object.keys(onTopicChosen).length) {
+    console.log(`\n【on_topic_* 的三选项分布】`)
+    for (const [k, v] of Object.entries(onTopicChosen)) console.log(`    ${String(k).padEnd(20)} ${v}`)
+  }
+  report('on_topic_* 的 p(answers+evidence)（这就是闸门判据）', onTopicMass)
   report('specificity_* 的可接受等级质量和', specMass)
 }
 

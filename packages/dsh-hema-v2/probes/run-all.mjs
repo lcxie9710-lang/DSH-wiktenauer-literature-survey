@@ -55,7 +55,7 @@ function syntaxPreflight() {
 const SUITES = [
   // 基线随功能删减而调整（跳转器与 answerable 已按实测删除，相关断言一并移除）。
   // 基线的作用是"有断言凭空消失就报错"，所以每次删断言都要同步下调，别让它变成噪声。
-  { name: 'probes/test-jev', args: ['probes/test-jev.mjs'], minOk: 37 },
+  { name: 'probes/test-jev', args: ['probes/test-jev.mjs'], minOk: 49 },
   { name: 'probes/test-chain', args: ['probes/test-chain.mjs'], minOk: 68 },
   { name: 'probes/test-decompose', args: ['probes/test-decompose.mjs'], minOk: 53 },
   { name: 'probes/test-report', args: ['probes/test-report.mjs'], minOk: 67 },

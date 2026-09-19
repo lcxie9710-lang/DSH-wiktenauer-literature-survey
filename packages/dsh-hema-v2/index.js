@@ -76,7 +76,7 @@ export const inject = ['tools']
  *
  * 改插件行为时**记得同时 bump 这里和 package.json 的 version**。
  */
-export const VERSION = '0.2.0'
+export const VERSION = '0.2.1'
 
 export const DEFAULT_API_KEY_ENV = 'AI_GATEWAY_API_KEY'
 export const RUN_ROOT = join(V2_ROOT, 'out', 'sessions')

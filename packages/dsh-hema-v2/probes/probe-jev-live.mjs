@@ -82,7 +82,7 @@ ok('返回每条断言一组答案（3 断言 × 3 问题 = 9）', Object.keys(r
 for (const c of claims) {
   const v = judgeClaim(resB.answers, c)
   const a = resB.answers[`support_${c.id}`]
-  console.log(`  [${c.id}] choice=${a?.choice} p(SUPPORTED)=${fmt(a?.probabilities?.SUPPORTED)} on_topic=${fmt(v.onTopic.p)} spec=${v.specificity.scoreLabel} → ${v.pass ? '通过' : '打回'}`)
+  console.log(`  [${c.id}] choice=${a?.choice} p(SUPPORTED)=${fmt(a?.probabilities?.SUPPORTED)} on_topic=${v.onTopic.chosen}(质量=${fmt(v.onTopic.mass)}) spec=${v.specificity.scoreLabel} → ${v.pass ? '通过' : '打回'}`)
 }
 const jSup = judgeClaim(resB.answers, claims[0])
 const jIrr = judgeClaim(resB.answers, claims[1])

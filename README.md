@@ -45,7 +45,8 @@ leader 把研究题目分解为方向集中的子题目
 每条子题一条链（researcher 是 continuable 子代理，保留自己的对话）：
    researcher 自己检索取证 → 产出「断言 + 证据定位符」包
       ↓  闸门 ②  确定性 precheck：定位符解不出来 = 证据不成立，硬拦，连 JEV 都不问
-      ↓  闸门 ③  JEV B+C 组：证据是否支持 / 是否跑题 / 是否够具体（阈值 0.7）
+      ↓  闸门 ③  JEV B+C 组：证据是否支持 / 与命题是什么关系 / 是否够具体（阈值 0.7）
+      │          「关系」是三选项：直接回答 / 提供证据 / 无关 —— **只有"无关"不通过**
       │          判否 → 逐条证据诊断（指出是哪个来源不支持）
       │               → send_message 回同一对话改证据或改断言；≤3 轮
       │          仍不过 → 证据悬置
@@ -124,7 +125,7 @@ Web 会话是**按 agent preset 逐代理组合工具**的，host 层的 `insert
 pnpm test          # 或 node packages/dsh-hema-v2/probes/run-all.mjs
 ```
 
-**487 项断言，0 失败，0 条套件异常。** 分套件明细见
+**499 项断言，0 失败，0 条套件异常。** 分套件明细见
 [`packages/dsh-hema-v2/README.md`](./packages/dsh-hema-v2/README.md#已验证--未验证)。
 
 `run-all.mjs` 的统计不是只数 `ok`/`FAIL` 行：脚本中途抛异常会让输出**截断**，

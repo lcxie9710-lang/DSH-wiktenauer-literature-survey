@@ -2,6 +2,11 @@
 node_modules/
 .pnpm-store/
 
+# lockfile：两个包都是**零外部依赖**（只 import node: 内置模块），所以 lockfile 里
+# 三个 importer 全是空的，锁不住任何东西。留着它只会让"跑过一次 pnpm test"变成
+# 工作区脏。哪天真的加了依赖，再把它从这行删掉即可。
+pnpm-lock.yaml
+
 # 运行产物（每次 run 的 trace / 审计 / JEV 调用日志都在这里）
 out/
 

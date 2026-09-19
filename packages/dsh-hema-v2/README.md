@@ -11,7 +11,7 @@ leader 把研究题目分解为方向集中的子题目
 每条子题一条链：
    researcher 自己检索取证 → 产出「断言 + 证据定位符」包
       ↓
-   JEV B+C 组判定（证据是否支持 / 是否跑题 / 是否够具体）
+   JEV B+C 组判定（证据是否支持 / 与命题是什么关系 / 是否够具体）
       ↓  判否 → 逐条证据诊断（指出是哪个来源不支持）→ 打回 researcher 改证据或改断言；≤3 轮
    仍不过 → 证据悬置（绝不假装通过）
    ↓
@@ -91,6 +91,7 @@ continuable 子代理拿得到持久化，却无法被代码 `await`；能 await
 |---|---|---|
 | JEV 通过阈值 | `0.7`（boolean 的 p(true) / choice 的目标选项概率） | `lib/jev.mjs` `THRESHOLD` |
 | score 类判定 | 可接受等级的**概率质量和** ≥ 0.7（不是"argmax 必须等于某级"） | `passScore` |
+| `on_topic` 判定 | 三选项 choice（answers / evidence / unrelated），**可接受侧质量和** ≥ 0.7 —— 只有 `unrelated` 不通过 | `passChoiceMass` + `ON_TOPIC_ACCEPT` |
 | 断言重试 | 3 轮 | `CHAIN_DEFAULTS.maxRounds` |
 | 分解检查 | 3 轮 | `DECOMPOSE_DEFAULTS.maxRounds` |
 | 硬闸门键 | 只有 `focus`（逐子题）；`coverage`/`independent` 降为反馈信号 | `DECOMPOSE_DEFAULTS.hardKeys` |
@@ -121,7 +122,7 @@ node packages/dsh-hema-v2/preset/verify-mount.mjs  # 让 roster 自己判断能�
 ### B. 外部 CLI 驱动（无头，用于批量与对照）
 
 ```bash
-node packages/dsh-hema-v2/probes/run-all.mjs                        # 全量离线回归（487 项断言）
+node packages/dsh-hema-v2/probes/run-all.mjs                        # 全量离线回归（499 项断言）
 node packages/dsh-hema-v2/harness/run.mjs --question "..." --jev fixture   # 端到端（合成裁决）
 node packages/dsh-hema-v2/harness/run.mjs --question "..." --jev http      # 端到端（真 JEV）
 ```
@@ -163,11 +164,11 @@ roles/               每个角色每次调用的 prompt / stdout / reasoning 原
 
 ## 已验证 / 未验证
 
-**已用 487 项断言验证**（`node packages/dsh-hema-v2/probes/run-all.mjs`）：
+**已用 499 项断言验证**（`node packages/dsh-hema-v2/probes/run-all.mjs`）：
 
 | 套件 | 断言数 | 验什么 |
 |---|---|---|
-| `probes/test-jev` | 37 | JEV 契约与阈值判定 |
+| `probes/test-jev` | 49 | JEV 契约与阈值判定（含 `on_topic` 三选项的质量和闸门） |
 | `probes/test-chain` | 68 | 单链轮数封顶、冻结、逐条证据诊断 |
 | `probes/test-decompose` | 53 | 分解悬置、硬闸门、用户编辑接受 |
 | `probes/test-report` | 67 | 报告后置检查与代码兜底 |
@@ -216,6 +217,7 @@ roles/               每个角色每次调用的 prompt / stdout / reasoning 原
 | **研究者 `maxDepth: 0 → 1`** | `maxDepth` 是**子代理自身的深度上限**：主会话 depth 0、子代理 depth 1，所以 0 等于禁止创建任何子代理。真机上三次 `hema_researcher` 全部报 `subagent depth 1 exceeds maxDepth 0`，模型只好自己把活干完，看起来就像"没起 subagent"。旧断言把 `maxDepth === 0` 写成了绿勾，等于把我的误解固化成了测试 |
 | **JEV 的 `score` 按浮点理解** | 真 JEV 的 `score` 是**浮点期望值**（0.69 / 1.48 / 2.93），不是整数索引，且**不返回 `scoreLabel`** —— 标签必须由概率分布 argmax 推出 |
 | **数据层并进本插件，`@ghogiel/dsh-weinao` 退役** | 一个 preset 里挂两个包、且 wiki 工具来自另一个包，会让"researcher 的白名单"跨包漂移。6 个数据工具直接注册在本插件里，preset 只需一行 |
+| **`on_topic` 从 boolean 改成三选项 choice，闸门取"非 unrelated"** | 旧问法（"是否仍在回答原子命题"）的 0.7 阈值**没有参考性**：真实 run 12 次验证调用、120 条断言里中位数 0.78、55–58% 落在 0.55–0.85，**同一 state 问两遍有 31% 判定翻转**（噪声底比阈值带还宽）。拆成三个独立二元判断更糟：`answers_atom` 只 5% 通过、`same_scope` **0%**（会否掉几乎全部合法断言）、`self_contained` 98%（饱和）。极性对照证实原题是对称的（正问 0.21 / 反问 0.67，平均和 0.898）→ 低通过率是**真实内容判断**：这批断言 **88% 是"提供证据"而非"直接回答"**。如实改成三分类后实测 answers 12 / evidence 106 / unrelated 2，p(answers+evidence) ≥ 0.7 覆盖 **98%**、翻转区 **0%**、重复翻转 4% |
 
 ## 已知缺口（有意的选择，不是遗漏）
 
@@ -232,15 +234,18 @@ roles/               每个角色每次调用的 prompt / stdout / reasoning 原
    真正兜住诚实性的是悬置节的强制完整性，不是这一条。
 3. **JEV 会偶发挂起**。实测一次 120s 超时，同批其余调用只要 0.4–0.6s。
    验证调用沿用 120s 超时 + 轮内重试。
-4. **`on_topic` 问法尚未替换（等决策）**。实测它的 0.7 阈值没有参考性：中位数 0.78、
-   55–58% 落在 0.55–0.85，且**同一 state 问两遍有 31% 的判定翻转**（噪声底）。影子测试
-   （`probes/probe-ontopic-shadow.mjs`，同 state 换问题重问 120 个断言）显示：
-   把它拆成三个二元判断**更糟** —— `answers_atom` 只 5% 通过、`same_scope` **0%** 通过
-   （都会否掉几乎全部合法断言），`self_contained` 98% 通过（饱和，白花配额）。
-   极性对照证实问题本身是对称的（正问 0.21 / 反问 0.67，平均和 0.898），所以低通过率是
-   真实内容判断：**这批断言 88% 是"提供证据"而非"直接回答"**（三选项 choice 实测
-   answers 12 / evidence 106 / unrelated 2）。建议改成三选项 `choice`、闸门取"非 unrelated"
-   （98% 通过、翻转区 0%、重复翻转 4%）。**尚未实施，等确认。**
+4. **`on_topic` 已改成三选项 choice（本轮落地）**。旧问法的 0.7 阈值没有参考性，
+   依据见上表最后一行。现在的判据是 `ON_TOPIC_ACCEPT = ['answers','evidence']`
+   的概率质量和 ≥ 0.7 —— **只有 `unrelated` 不通过**。
+   选项措辞就是影子测试（`probes/probe-ontopic-shadow.mjs`）里量过的那一版，
+   **换措辞上面那些数字就不再适用**，要改就得重新测。
+   残留的噪声：质量落在阈值附近的断言仍会被误判 —— 影子测试量到 **~2%**，
+   真机 `probe-jev-live.mjs` 也抓到一例（「Zornhau 是一记自下向上的撩击」明显贴题，
+   但 JEV 给 answers 0.40 / evidence 0.27 / unrelated 0.33，质量 0.67）。
+   对这种情况 `judgeClaim` 会报「关系判定不确定」而**不是**「与命题无关」——
+   措辞上的这点区分不是修辞：说成"无关"会让 researcher 去改一个本来没问题的表述。
+   代价可控：on_topic 判否不会单独造成悬置（B 组的 support 才是主承重），
+   且真被误判时是**多打回一轮**，不是错误结论上桌。
 5. **`hema_report_check` 只做一遍校验，没有"打回重写"的轮次循环**。
    CLI 路径有（`runReport` 最多 3 稿），preset 路径把重写交给模型自己判断
    —— 因为模型的每一稿都是一次完整对话，让它自己看着问题清单改更自然。
@@ -315,8 +320,8 @@ INVALID_REQUEST
   你改代码的时间。刷新浏览器**不会**重启 Node 进程。
 
   为此插件有**版本路标**：`hema_start` / `hema_status` 的返回里带 `pluginVersion`
-  （当前 `0.2.0`），`apply()` 也会往宿主日志打一行
-  `hema-v2 v0.2.0: 已注册 12 个工具（...）`。
+  （当前 `0.2.1`），`apply()` 也会往宿主日志打一行
+  `hema-v2 v0.2.1: 已注册 12 个工具（...）`。
   跑一次 `hema_start` 看版本号，就知道跑的是哪一版。改行为时记得同时 bump
   `index.js` 的 `VERSION` 与 `package.json` 的 `version`（离线套件会校验两者一致）。
 

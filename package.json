@@ -1,6 +1,6 @@
 {
   "name": "dsh-hema-literature",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "description": "DSH 上的 HEMA（欧洲历史武术）文献研究：Wiktenauer 数据层 + 以 JEV 为验证器的证据-断言链路。两个包：@ghogiel/dsh-hema-v2（研究链路，preset 层）与 @ghogiel/dsh-jev（JEV 评估模型工具）。",
