@@ -22,10 +22,14 @@
 
 import { mkdirSync, writeFileSync, existsSync, readFileSync, symlinkSync, lstatSync, readlinkSync, rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { homedir } from 'node:os'
 import { V2_ROOT } from '../lib/wiki.mjs'
 
 export const DSH_HOME = join(V2_ROOT, '..', '..', '.dsh-home')
-export const CREDENTIALS = 'C:\\Users\\Ghogiel\\.dsh\\.credentials.yaml'
+// 凭据仍指向**真实**的 ~/.dsh/.credentials.yaml —— 隔离的 profile 只指向它、不复制密钥。
+// 这里曾经写死成 `C:\Users\<我>\...`：既泄露了机器上的用户名，又让任何别人跑
+// `harness/verify-profiles.mjs` 时指向一个不存在的路径。用 homedir() 推导，语义不变。
+export const CREDENTIALS = join(homedir(), '.dsh', '.credentials.yaml')
 
 /** 本地插件包名与源码位置（本 monorepo 的 packages/dsh-hema-v2） */
 export const PLUGIN_PKG = '@ghogiel/dsh-hema-v2'
