@@ -11,7 +11,7 @@
 | [`packages/dsh-hema-v2`](./packages/dsh-hema-v2/README.md) | **HEMA v2 研究链路**。12 个工具：6 个 Wiktenauer 数据层 + 6 个链路控制层（preset 层插件） |
 | [`packages/dsh-jev`](./packages/dsh-jev/README.md) | **JEV 评估模型工具**。一个 `jev_evaluate`，把闭式判断（概率 / 选择 / 评分）变成模型可调用的工具 |
 
-两者都在 **preset 层**，不在 host 层 —— 见下面的「为什么必须是 preset 层」。
+两者都在 **preset 层**，不在 host 层 。
 
 ---
 
@@ -90,13 +90,7 @@ subagent service 上也没有 public 的 await-settlement。continuable 子代�
 researcher 只拿 6 个数据工具（`toolFilter.allow`），且**没有 fs / shell / web / 编排工具** ——
 它不能把原文摘抄成文件，也不能绕开轮数封顶自己再开子代理。
 
-### 为什么必须是 preset 层
 
-Web 会话是**按 agent preset 逐代理组合工具**的，host 层的 `insert` 行
-**不会进到会话里的 agent**。host 层那套在 `dsh-headless` 下能用
-（headless 不挂 agent-presets roster），但在真正使用的 GUI 会话里工具根本不会出现。
-所以两个包都**不声明 `dsh.bundle`**，也不提供 `cordis.patch.yml`：
-它们是普通 profile 依赖，只有 preset 里那一行能让工具可见。
 
 ---
 
