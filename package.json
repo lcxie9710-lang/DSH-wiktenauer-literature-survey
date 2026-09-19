@@ -1,55 +1,27 @@
 {
-  "name": "@ghogiel/dsh-weinao",
-  "description": "维脑 Agent (Weinao) — HEMA (Historical European Martial Arts) literature research tools for DeepSeek Harness: search and read Wiktenauer pages, maintain a bilingual glossary, and produce cited research reports",
+  "name": "dsh-hema-literature",
   "version": "0.2.0",
+  "private": true,
   "type": "module",
-  "main": "lib/index.js",
-  "types": "lib/types/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./lib/types/index.d.ts",
-      "default": "./lib/index.js"
-    },
-    "./package.json": "./package.json"
-  },
-  "files": [
-    "lib"
-  ],
+  "description": "DSH 上的 HEMA（欧洲历史武术）文献研究：Wiktenauer 数据层 + 以 JEV 为验证器的证据-断言链路。两个包：@ghogiel/dsh-hema-v2（研究链路，preset 层）与 @ghogiel/dsh-jev（JEV 评估模型工具）。",
   "license": "MIT",
-  "keywords": [
-    "dsh-plugin",
-    "deepseek-harness",
-    "hema",
-    "wiktenauer",
-    "weinao",
-    "维脑",
-    "agent"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/lcxie9710-lang/DSH-wiktenauer-literature-survey.git"
+  "engines": {
+    "node": ">=20"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "prepare": "npm run build",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
-  },
-  "dependencies": {
-    "@deepseek-ai/schemastery": "^3.18.1"
-  },
-  "peerDependencies": {
-    "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-session": "^0.1.5-rc.2",
-    "@deepseek-ai/dsh-tools": "^0.1.5-rc.2"
-  },
-  "devDependencies": {
-    "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-session": "^0.1.5-rc.2",
-    "@deepseek-ai/dsh-tools": "^0.1.5-rc.2",
-    "@deepseek-ai/schemastery": "^3.18.1",
-    "@types/node": "^24.0.0",
-    "typescript": "^5.7.0",
-    "vitest": "^3.0.0"
+    "install:dsh": "node install.mjs",
+    "test": "node packages/dsh-hema-v2/probes/run-all.mjs",
+    "test:plugin": "node packages/dsh-hema-v2/probes/test-plugin.mjs",
+    "test:chain": "node packages/dsh-hema-v2/probes/test-chain.mjs",
+    "test:jev": "node packages/dsh-hema-v2/probes/test-jev.mjs",
+    "test:report": "node packages/dsh-hema-v2/probes/test-report.mjs",
+    "test:data": "node packages/dsh-hema-v2/probes/test-data-tools.mjs",
+    "preset:sync": "node packages/dsh-hema-v2/preset/sync-preset.mjs",
+    "preset:install": "node packages/dsh-hema-v2/preset/install.mjs",
+    "preset:verify": "node packages/dsh-hema-v2/preset/verify-preset.mjs",
+    "preset:mount": "node packages/dsh-hema-v2/preset/verify-mount.mjs",
+    "profiles:verify": "node packages/dsh-hema-v2/harness/verify-profiles.mjs",
+    "jev:verify": "node packages/dsh-jev/verify.mjs",
+    "run": "node packages/dsh-hema-v2/harness/run.mjs"
   }
 }

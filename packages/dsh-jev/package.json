@@ -1,0 +1,25 @@
+{
+  "name": "@ghogiel/dsh-jev",
+  "version": "0.1.0",
+  "private": true,
+  "description": "JEV (typesafe-ai/jev) evaluation model as a model-callable DeepSeek Harness tool: jev_evaluate",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "jev",
+    "typesafe-ai",
+    "evaluation-model",
+    "vercel-ai-gateway"
+  ]
+}

@@ -1,25 +1,27 @@
-# Build output
-lib/
-
-# Dependencies
+# 依赖
 node_modules/
+.pnpm-store/
 
-# Test output
-coverage/
+# 运行产物（每次 run 的 trace / 审计 / JEV 调用日志都在这里）
+out/
 
-# Logs
+# 隔离的 DSH_HOME（CLI 路径用，不要把真实 ~/.dsh 搅进来）
+.dsh-home/
+
+# 密钥：JEV 走 AI Gateway，key 只放本地 .env，绝不进仓库
+.env
+.env.*
+!.env.example
+
+# 杂项
 *.log
 npm-debug.log*
-
-# Editor
+coverage/
+.DS_Store
+Thumbs.db
 .vscode/
 .idea/
-.DS_Store
 
-# Env
-.env
-.env.local
-
-# pnpm (this project uses npm)
-pnpm-lock.yaml
-pnpm-workspace.yaml
+# 注意：**不要**忽略 `lib/`。
+# v1 时代 lib/ 是 tsc 的编译产物，所以旧 .gitignore 忽略了它；
+# 现在 packages/dsh-hema-v2/lib/ 是**手写的源码**，忽略了整个包就空了。

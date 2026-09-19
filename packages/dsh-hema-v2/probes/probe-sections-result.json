@@ -1,0 +1,130 @@
+[
+  {
+    "kind": "技术页",
+    "page": "Zornhaw",
+    "ok": true,
+    "resolved": "Zornhaw",
+    "revid": 110509,
+    "apiSections": 6,
+    "htmlHeadings": 7,
+    "htmlHeadingsWithId": 1,
+    "anchorOverlap": 0,
+    "slicedSections": 7,
+    "lenMin": 152,
+    "lenMed": 7479,
+    "lenMax": 9958,
+    "over4000": 4,
+    "sampleAnchors": [
+      "mw-toc-heading",
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  {
+    "kind": "技术页",
+    "page": "Schilhaw",
+    "ok": true,
+    "resolved": "Schilhaw",
+    "revid": 141601,
+    "apiSections": 3,
+    "htmlHeadings": 4,
+    "htmlHeadingsWithId": 1,
+    "anchorOverlap": 0,
+    "slicedSections": 4,
+    "lenMin": 39,
+    "lenMed": 219,
+    "lenMax": 1691,
+    "over4000": 0,
+    "sampleAnchors": [
+      "mw-toc-heading",
+      null,
+      null,
+      null
+    ]
+  },
+  {
+    "kind": "技术页",
+    "page": "Nachreisen",
+    "ok": true,
+    "resolved": "Nachreisen",
+    "revid": 83304,
+    "apiSections": 2,
+    "htmlHeadings": 2,
+    "htmlHeadingsWithId": 0,
+    "anchorOverlap": 0,
+    "slicedSections": 2,
+    "lenMin": 50,
+    "lenMed": 138,
+    "lenMax": 138,
+    "over4000": 0,
+    "sampleAnchors": [
+      null,
+      null
+    ]
+  },
+  {
+    "kind": "薄页",
+    "page": "Indes",
+    "ok": true,
+    "resolved": "Indes",
+    "revid": 5471,
+    "apiSections": 0,
+    "htmlHeadings": 0,
+    "htmlHeadingsWithId": 0,
+    "anchorOverlap": 0,
+    "slicedSections": 0,
+    "lenMin": null,
+    "lenMed": null,
+    "lenMax": null,
+    "over4000": 0,
+    "sampleAnchors": []
+  },
+  {
+    "kind": "手稿页",
+    "page": "Codex Ringeck (MS Dresd.C.487)",
+    "ok": true,
+    "resolved": "Johan Liechtnawers Fechtbuch geschriebenn (MS Dresd.C.487)",
+    "revid": 165415,
+    "apiSections": 6,
+    "htmlHeadings": 7,
+    "htmlHeadingsWithId": 1,
+    "anchorOverlap": 0,
+    "slicedSections": 7,
+    "lenMin": 101,
+    "lenMed": 970,
+    "lenMax": 24491,
+    "over4000": 1,
+    "sampleAnchors": [
+      "mw-toc-heading",
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  {
+    "kind": "手稿页",
+    "page": "Goliath Fechtbuch (MS Germ.Quart.2020)",
+    "ok": true,
+    "resolved": "Goliath Fechtbuch (MS Germ.Quart.2020)",
+    "revid": 159636,
+    "apiSections": 6,
+    "htmlHeadings": 7,
+    "htmlHeadingsWithId": 1,
+    "anchorOverlap": 0,
+    "slicedSections": 7,
+    "lenMin": 101,
+    "lenMed": 882,
+    "lenMax": 14709,
+    "over4000": 2,
+    "sampleAnchors": [
+      "mw-toc-heading",
+      null,
+      null,
+      null,
+      null
+    ]
+  }
+]

@@ -1,0 +1,30 @@
+{
+  "name": "@ghogiel/dsh-hema-v2",
+  "version": "0.2.0",
+  "private": true,
+  "description": "HEMA (Historical European Martial Arts) literature research on DeepSeek Harness as a preset-scoped plugin: a Wiktenauer data layer plus an evidence-claim pipeline in which JEV adjudicates every claim and hard round caps live in code, not in prompts.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "harness",
+    "preset",
+    "probes",
+    "data"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "hema",
+    "wiktenauer",
+    "jev",
+    "preset",
+    "historical-european-martial-arts"
+  ]
+}
