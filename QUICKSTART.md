@@ -6,18 +6,20 @@
 
 ## 0. 前置条件
 
-| 需要 | 检查 |
-|---|---|
-| Node ≥ 20 | `node -v` |
-| pnpm | `pnpm -v`（没有就 `corepack enable pnpm`） |
-| 本机已装 DSH，且**至少启动过一次 web profile** | `npx @deepseek-ai/dsh web`，看到界面即可 |
-| Vercel AI Gateway 的 key | 见下一步 |
+| 需要 | 检查 | 为什么 |
+|---|---|---|
+| Node ≥ 20 | `node -v` | |
+| **`dsh` 能在普通 shell 里直接跑** | `dsh --version` | 光用 `npx` 跑过 DSH **不算** —— `npx` 不会把 `dsh` 放进别的进程的 PATH。装：`npm i -g @deepseek-ai/dsh` |
+| **pnpm** | `pnpm -v` | `dsh plugin` 是在 profile 目录里转发给 pnpm 的。**boot DSH 本身不需要 pnpm**，所以"有 dsh"不代表"有 pnpm"。装：`corepack enable pnpm` 或 `npm i -g pnpm` |
+| 已启动过一次 web profile | `dsh --profile web`，看到界面即可 | 安装脚本要往 `<DSH_HOME>/profiles/web/` 里写东西，那个目录是 DSH 自己建的 |
+| Vercel AI Gateway 的 key | 见第 2 节 | JEV 的唯一凭据 |
 
-> 为什么要求"至少启动过一次"：安装脚本要往 `<DSH_HOME>/profiles/web/` 里写东西，
-> 那个目录是 DSH 自己建的。没启动过就没有它。
+> 缺 `dsh` 或 pnpm 的话不用担心装坏：`node install.mjs` 会在**动任何东西之前**停下
+> 并告诉你装什么（见第 3 节）。
 
 `DSH_HOME` 默认是 `~/.dsh`（Windows 上是 `C:\Users\<你>\.dsh`）。
 装在别处的话，所有命令前面加 `DSH_HOME=...`（PowerShell：`$env:DSH_HOME='...'`）。
+`node install.mjs` 每次都会把实际用的 `DSH_HOME` 和 profile 打在头两行。
 
 ---
 
@@ -35,27 +37,60 @@ Node 内置模块）。`pnpm install` 只是为了仓库根脚本方便，可以
 
 ## 2. 配 JEV 的 key
 
-JEV 走 Vercel AI Gateway。
+JEV 走 Vercel AI Gateway。**放错位置不会报错**，只会让 JEV 调用全部失败，
+症状和"没配 key"一模一样 —— 所以这一步别跳。
+
+### GUI / preset 路径（你实际用的那条）
+
+由 DSH 的凭据服务解析，固定优先级：
+
+| 层 | 位置 | 说明 |
+|---|---|---|
+| 1 | 启动环境变量 | `AI_GATEWAY_API_KEY=vck_... dsh web` |
+| 2 | `<DSH_HOME>/.credentials.yaml` | GUI 的设置界面写进去的就是这里 |
+| 3 | **`<invocation cwd>/.env`** | **你启动 dsh 时所在目录**的 `.env` |
+| 4 | `<DSH_HOME>/.env` | |
+
+**推荐写第 4 层**（与 cwd 无关，配一次就不用再想）：
 
 ```bash
-cp .env.example .env
-# 编辑 .env，填 AI_GATEWAY_API_KEY=vck_...
+# Windows
+echo AI_GATEWAY_API_KEY=vck_... > "%USERPROFILE%\.dsh\.env"
+# macOS / Linux
+echo "AI_GATEWAY_API_KEY=vck_..." >> ~/.dsh/.env
 ```
 
-key 的解析顺序（每次调用重新解析，轮换后下一次请求就生效）：
+**如果你更想用仓库根的那个 `.env`**（`cp .env.example .env`），那第 3 层要求你
+**从仓库根启动 dsh**：
 
-1. preset 行里的 `config.apiKey`
-2. `process.env[config.apiKeyEnv]`，默认 `AI_GATEWAY_API_KEY`
-3. DSH 凭据库（`dsh` 的设置界面里存的那个）
-4. `<DSH_HOME>/.env`
+```bash
+cd <你 clone 的仓库>
+npx @deepseek-ai/dsh web
+```
 
-`.env` 已经在 `.gitignore` 里，**不会被提交**。
+从别处启动就走着第 3 层读到另一个目录，key 不会生效 —— 这是本项目实测踩过的坑。
 
-自检（会真调一次网关，约 $0.00002）：
+### 无头 CLI 路径（`harness/run.mjs`）是另一套
+
+它读 `packages/dsh-hema-v2/.env`（`harness/env.mjs` 的 `ENV_PATH`）或进程环境变量，
+**不认**第 3/4 层。想跑 CLI 就在那里也放一份，或者导出环境变量：
+
+```bash
+AI_GATEWAY_API_KEY=vck_... node packages/dsh-hema-v2/harness/run.mjs --question "..." --jev http
+```
+
+### 自检
 
 ```bash
 node packages/dsh-jev/verify-key.mjs
 ```
+
+它验的是上面 A 那套链路（会真调一次网关，约 $0.00002）。
+**它偶发 120s 超时** —— 实测第一次 `FAIL: 5/6`、紧接着重跑 `PASS: 6/6`；
+失败时它其实**已经找到了 key**（前两条 `ok` 就是证据），纯粹是那次网关调用慢。
+超时就重跑一遍，不要急着改 key。
+
+`.env` 已经在 `.gitignore` 里，**不会被提交**。
 
 ---
 
@@ -63,28 +98,58 @@ node packages/dsh-jev/verify-key.mjs
 
 ```bash
 node install.mjs                # 默认 web profile
-node install.mjs --dry-run      # 先看它会做什么
+node install.mjs --dry-run      # 先看它会做什么（也会做通路预检）
 node install.mjs --profile web  # 指定 profile
 ```
 
-它会做四件事：
+它会先做**通路预检**，然后做四件事：
 
-1. `@ghogiel/dsh-jev` —— 生成 `conditioned-reflex` preset、junction 进 profile、pnpm 记账
-2. `@ghogiel/dsh-hema-v2` —— 生成 `hema-v2` preset 并装进 `.agent-presets/`、junction、pnpm 记账
-3. 清理 v1 遗留（`@ghogiel/dsh-weinao` 的 junction / link 依赖 / 只认它的 `hema` preset）
+1. `@ghogiel/dsh-jev` —— 生成 `conditioned-reflex` preset、接进 profile、pnpm 记账
+2. `@ghogiel/dsh-hema-v2` —— 生成 `hema-v2` preset 并装进 `.agent-presets/`、接进 profile、pnpm 记账
+3. 清理 v1 遗留（`@ghogiel/dsh-weinao` 的链接 / link 依赖 / 只认它的 `hema` preset）
 4. 复查 preset 结构与挂载
 
-**为什么必须做 pnpm 记账那一步**：只建 junction + 写 `package.json` 是半成品。
-pnpm 的 lockfile 与 `node_modules` 账本都不认这个依赖，下一次
-`pnpm install`（或任何 `dsh plugin` 操作）会把 junction 当多余依赖清掉 ——
-而那时 preset 还在 roster 里，症状是"**preset 在，一选就报找不到包**"。实测踩过。
+### 为什么先预检：`dsh plugin` 要 pnpm，而"有 dsh"不等于"有 pnpm"
+
+`dsh plugin --profile <p> <args>` 是在 profile 目录里**转发给 pnpm** 的。而 boot DSH
+本身**不需要** pnpm（实测全新 `DSH_HOME` 能正常启动，bundle 从 dsh 安装目录解析）——
+所以一台机器完全可能"有纯净的 dsh，没有 pnpm"。
+
+这种情况下老版本会**留下半装状态**：链接建了、`link:` 依赖写了、preset 也在 roster 里
+可见，但 lockfile 从来不知道这个包 —— 下一次 pnpm 操作会把链接当多余依赖清掉，
+症状是"**preset 在，一选就报找不到包**"。
+
+现在不会了。脚本先用 `dsh plugin --version`（不安装任何东西）探一次那条通路，
+走不通就在**动任何东西之前**停下：
+
+```
+`dsh` 能用，但它转发给 pnpm 失败 —— 什么也没改。
+
+  诊断：PATH 上找不到 pnpm。
+
+...
+  corepack enable pnpm        # 或：npm i -g pnpm
+```
+
+装完 pnpm 再重跑即可。（同理，PATH 上找不到 `dsh` 也会在动手前停下并提示
+`npm i -g @deepseek-ai/dsh` —— 只用 `npx` 跑 DSH 不会把 `dsh` 放进别的进程的 PATH。）
+
+### 安装本身是原子的
+
+**不需要**手工建 junction：`pnpm install` 对 `link:` 依赖会自己建这个链接。
+Windows 上实测它建的是 **junction**（reparse tag `0xa0000003`），
+不需要管理员权限、也不需要开发者模式。所以流程是
+「写 `link:` 依赖 → `dsh plugin install`（一次同时建链接和 lockfile 账目）→ 复查」，
+任何一步不对就**还原 `package.json` 并删掉链接** —— 要么装全，要么一点不动。
 
 成功的输出长这样：
 
 ```
-  ok   junction 就位（created）
+预检通过：dsh plugin → pnpm 通路正常（...）
   ok   package.json 的 link 依赖已写入
   ok   pnpm 记账（lockfile 已含本包）
+  ok   链接就位（由 pnpm 建立）
+  ok   preset 已安装
 PASS: 35/35 项通过          ← preset 结构校验
 PASS：preset 可挂载          ← roster 自己判断
 全部完成
@@ -203,9 +268,36 @@ node packages/dsh-jev/verify.mjs                       # JEV 插件本体（**�
 
 按"症状 → 原因"排。下面每一条都是实测踩过的，不是设想。
 
+### `node install.mjs` 报「PATH 上找不到 `dsh` 命令」，退出码 2
+什么也没改，这是有意的。只用 `npx @deepseek-ai/dsh web` 跑过 DSH 的话，
+`dsh` 不会出现在普通 shell 的 PATH 上。装成全局的再重跑：
+
+```bash
+npm i -g @deepseek-ai/dsh
+```
+
+### `node install.mjs` 报「`dsh` 能用，但它转发给 pnpm 失败」，退出码 2
+什么也没改，这是有意的 —— 这种情况下继续装会留下半装状态。装上 pnpm 再重跑：
+
+```bash
+corepack enable pnpm        # 或：npm i -g pnpm
+```
+
+（`dsh plugin` 是在 profile 目录里转发给 pnpm 的；boot DSH 本身不需要 pnpm，
+所以"有 dsh"并不代表"有 pnpm"。）
+
+### JEV 调用失败 / 说找不到 key
+见上面第 2 节。快速自查：key 在不在 `<DSH_HOME>/.env`？如果放在仓库根的
+`.env` 里，dsh 是不是**从仓库根启动**的？（第 3 层读的是"启动时所在目录"，
+不是"仓库根"。）跑 `node packages/dsh-jev/verify-key.mjs` 会告诉你哪一层答上了。
+
+### `node packages/dsh-jev/verify-key.mjs` 报 `JEV did not answer within 120s`
+**偶发，重跑即可。** 实测第一次 `FAIL: 5/6`、紧接着 `PASS: 6/6`。注意失败时它
+其实**已经找到了 key**（输出里前两条 `ok` 就是证据），纯粹是那次网关调用慢
+—— 别急着改 key。
+
 ### `Cannot find package '@ghogiel/dsh-hema-v2' imported from <profile>`
-junction 被 pnpm 清掉了 —— 说明当初没做记账那一步，或者后来跑过一次
-`pnpm install` / `dsh plugin` 操作。重跑 `node install.mjs`。
+链接被 pnpm 清掉了。重跑 `node install.mjs`（现在它会先把通路预检一遍）。
 
 ### preset 选择器里看不到「HEMA v2 研究链路」
 1. `node packages/dsh-hema-v2/preset/verify-mount.mjs` —— 让 roster 自己说能不能挂。
@@ -251,5 +343,11 @@ node packages/dsh-jev/preset/install.mjs --uninstall
 rm -rf <DSH_HOME>/.agent-presets/hema-v2 <DSH_HOME>/.agent-presets/conditioned-reflex
 ```
 
-`--uninstall` 只删 junction；`package.json` 里的 link 依赖与 `.agent-presets/` 里的目录
-由你手工清（脚本不擅自改你的依赖表）。
+`--uninstall` 只删链接；更彻底的做法是让 pnpm 连依赖与 lockfile 一起清：
+
+```bash
+dsh plugin --profile web remove @ghogiel/dsh-hema-v2
+dsh plugin --profile web remove @ghogiel/dsh-jev
+```
+
+（本脚本不擅自改你的依赖表，所以两条路都留着。）

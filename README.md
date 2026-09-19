@@ -22,13 +22,18 @@ git clone https://github.com/lcxie9710-lang/DSH-wiktenauer-literature-survey.git
 cd DSH-wiktenauer-literature-survey
 
 # 1. 给 JEV 配 key（JEV 走 Vercel AI Gateway）
-echo "AI_GATEWAY_API_KEY=vck_..." > .env     # 见 .env.example
+#    ★ 放 <DSH_HOME>/.env（与启动目录无关）；写仓库根的 .env 就必须从仓库根启动 dsh
+echo "AI_GATEWAY_API_KEY=vck_..." >> ~/.dsh/.env     # 见 .env.example 里的完整说明
 
-# 2. 一条命令接进本机 DSH
+# 2. 一条命令接进本机 DSH（会先预检 dsh / pnpm 通路，走不通就什么都不改）
 node install.mjs
 
 # 3. 重启 DSH Host，然后开新会话，在 preset 选择器里选「HEMA v2 研究链路」
 ```
+
+**前置条件只有两个容易漏的**：`dsh` 要在普通 shell 里能跑（光用 `npx` 跑过不算），
+机器上要有 pnpm（`dsh plugin` 需要它，boot DSH 本身不需要）。
+两者缺任一个 `node install.mjs` 都会在动任何东西之前停下并告诉你装什么。
 
 细节、排错、以及"为什么改了代码要重启"都写在 **[QUICKSTART.md](./QUICKSTART.md)**。
 

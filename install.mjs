@@ -58,6 +58,54 @@ if (!existsSync(profileDir)) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// 0. 预检 —— 通路走不通就在这里停下，一个字都不改
+// ═══════════════════════════════════════════════════════════════
+/*
+ * 为什么放在最前面：下面的每一步都依赖 `dsh plugin` → pnpm 这一跳。等它失败了再报，
+ * 用户看到的是"两条脚本失败"，而且那时 junction / link 依赖 / preset 目录都已经动过了。
+ * 在这里挡一次，输出是一条诊断，代价是零副作用。
+ *
+ * 注意 `--dry-run` 也照跑：`dsh plugin --version` 不安装任何东西，所以 dry-run
+ * 报的是真实结论，而不是把最可能踩的那个坑糊过去。
+ */
+{
+  const dshEntry = resolveDshEntry()
+  if (dshEntry === null) {
+    console.error('\nPATH 上找不到 `dsh` 命令 —— 什么也没改。\n')
+    console.error('`dsh plugin` 既是本脚本保持 profile 一致的手段，也是 pnpm 认识这两个包的途径。')
+    console.error('请把 DSH 装成能在普通 shell 里直接跑 `dsh`：')
+    console.error('  npm i -g @deepseek-ai/dsh')
+    console.error('（只用 `npx` 跑 DSH 不会把 `dsh` 放进别的进程的 PATH。）')
+    process.exit(2)
+  }
+  const probe = spawnSync(process.execPath, [dshEntry, 'plugin', '--profile', profile, '--version'],
+    { cwd: profileDir, encoding: 'utf8', timeout: 120_000, windowsHide: true })
+  if (probe.status !== 0) {
+    console.error('\n`dsh` 能用，但它转发给 pnpm 失败 —— 什么也没改。\n')
+    if (!pnpmOnPath()) {
+      console.error('  诊断：PATH 上找不到 pnpm。')
+    } else {
+      // 有 pnpm 却失败：把子进程的报错带出来，但只留 ASCII 行 ——
+      // pnpm 在中文 Windows 上输出的是 OEM 码页字节，直接打会是一串乱码。
+      console.error('  诊断：PATH 上能找到 pnpm，但它没能在 profile 目录里跑起来：')
+      const ascii = `${probe.stdout ?? ''}${probe.stderr ?? ''}`.split(/\r?\n/)
+        .filter(l => l.trim() && /^[\x20-\x7e]+$/.test(l.trim())).slice(-3)
+      for (const l of ascii) console.error(`    ${l.trim()}`)
+    }
+    console.error('')
+    console.error('`dsh plugin` 是在 profile 目录里转发给 pnpm 的，而 **boot DSH 并不需要 pnpm**')
+    console.error('（实测全新 DSH_HOME 能正常启动）—— 所以"有 dsh"不代表"有 pnpm"。装上再重跑：')
+    console.error('  corepack enable pnpm        # 或：npm i -g pnpm')
+    console.error('')
+    console.error('为什么宁可拒绝也不"先装上再说"：只建 junction、只写 `link:` 依赖而没写 lockfile')
+    console.error('账目，留下的是半装状态 —— preset 在 roster 里可见，但下一次 pnpm 操作会把链接')
+    console.error('当多余依赖清掉，会话报 "Cannot find package"。')
+    process.exit(2)
+  }
+  console.log(`\n预检通过：dsh plugin → pnpm 通路正常（${dshEntry.replace(HERE + '\\', '')}）`)
+}
+
+// ═══════════════════════════════════════════════════════════════
 step(1, '@ghogiel/dsh-jev')
 run('jev sync-preset', join(JEV, 'preset', 'sync-preset.mjs'))
 run('jev install', join(JEV, 'preset', 'install.mjs'), ['--profile', profile])
@@ -168,4 +216,16 @@ function resolveDshEntry() {
     }
   }
   return null
+}
+
+/**
+ * pnpm 在不在 PATH 上 —— 我们自己的判断，不去解析子进程的报错文本。
+ * pnpm 在中文 Windows 上把 "不是内部或外部命令" 按 OEM 码页写出来，
+ * 照原样打印会是一串乱码；而"PATH 上有没有 pnpm"这个事实本来就能直接查。
+ */
+function pnpmOnPath() {
+  const sep = process.platform === 'win32' ? ';' : ':'
+  const exts = process.platform === 'win32' ? ['.cmd', '.ps1', ''] : ['']
+  return (process.env.PATH ?? '').split(sep).some((dir) =>
+    dir && exts.some((ext) => existsSync(join(dir, `pnpm${ext}`))))
 }

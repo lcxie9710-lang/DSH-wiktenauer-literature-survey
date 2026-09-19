@@ -23,6 +23,10 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 const BUILD_ONLY = process.argv.includes('--build')
+// `--dry-run` 必须真的什么都不写：根 install.mjs 会带着它跑一遍，而它的承诺是
+// "先看它会做什么"。以前这里不认这个参数，于是 dry-run 其实重写了本地 preset
+// 和 .agent-presets/ 里的副本 —— 幂等，但"什么也没改"就成了假话。
+const DRY = process.argv.includes('--dry-run')
 const HERE = import.meta.dirname
 const PRESET_ID = 'hema-v2'
 
@@ -124,8 +128,12 @@ for (const id of ['hema-v2', 'weinao', 'tool-hema-researcher']) {
 }
 
 const target = join(HERE, PRESET_ID, 'agent.cordis.yml')
-writeFileSync(target, `${source}\n${ROWS}`)
-console.log(`已生成 ${target}`)
+if (DRY) {
+  console.log(`  --  dry-run：会写 ${target}`)
+} else {
+  writeFileSync(target, `${source}\n${ROWS}`)
+  console.log(`已生成 ${target}`)
+}
 
 if (BUILD_ONLY) {
   console.log('（--build：未安装）')
@@ -133,10 +141,14 @@ if (BUILD_ONLY) {
 }
 
 const destDir = join(dshHome, '.agent-presets', PRESET_ID)
-mkdirSync(destDir, { recursive: true })
-cpSync(join(HERE, PRESET_ID, 'preset.yml'), join(destDir, 'preset.yml'))
-cpSync(target, join(destDir, 'agent.cordis.yml'))
-console.log(`已安装到 ${destDir}`)
+if (DRY) {
+  console.log(`  --  dry-run：会安装到 ${destDir}`)
+} else {
+  mkdirSync(destDir, { recursive: true })
+  cpSync(join(HERE, PRESET_ID, 'preset.yml'), join(destDir, 'preset.yml'))
+  cpSync(target, join(destDir, 'agent.cordis.yml'))
+  console.log(`已安装到 ${destDir}`)
+}
 console.log('')
 console.log('下一步：在本机 DSH_HOME 里让插件包可解析（junction + link 依赖），然后重启 Host / 刷新页面，')
 console.log('在 preset 选择器里选「HEMA v2 研究链路」。install.mjs 会自动做前者。')

@@ -1,8 +1,15 @@
 /**
- * 极小的 .env 读取器。
+ * 极小的 .env 读取器。**只服务无头 CLI 路径。**
  *
  * 为什么需要：JEV 的 key 不能出现在命令行参数里（会进 shell 历史、进日志、进对话记录），
- * 所以要有一个进程外的地方放它。`.env` 已在仓库根 `.gitignore` 里，不进版本库。
+ * 所以要有一个进程外的地方放它。
+ *
+ * ⚠️ 这里读的是 `<包>/packages/dsh-hema-v2/.env`（`ENV_PATH`），**不是仓库根的 `.env`**。
+ * 两者是不同的东西，别混：
+ *   · GUI / preset 路径（user 实际用的那条）用 DSH 凭据服务解析，认的是
+ *     `<DSH_HOME>/.credentials.yaml`、`<invocation cwd>/.env`、`<DSH_HOME>/.env`；
+ *   · 只有 `harness/run.mjs` 这条无头路径读本文件。
+ * 想两边都能跑就两处都放，或者干脆用启动环境变量。
  *
  * 刻意不引第三方 dotenv：这里只需要 KEY=VALUE 这一种语法，
  * 引一个依赖去解析它不值得。已存在的 process.env 优先（环境变量是显式覆盖）。
@@ -53,7 +60,7 @@ export function loadEnvFile(path = ENV_PATH) {
  */
 export function describeKeyState(envName = 'AI_GATEWAY_API_KEY') {
   const v = process.env[envName]
-  if (!v) return { present: false, source: null, hint: `未找到 ${envName}（可写进仓库根的 .env）` }
+  if (!v) return { present: false, source: null, hint: `未找到 ${envName}（无头 CLI 路径读 ${ENV_PATH}）` }
   const fromEnvFile = existsSync(ENV_PATH) && (() => {
     try { return parseEnv(readFileSync(ENV_PATH, 'utf8'))[envName] === v } catch { return false }
   })()

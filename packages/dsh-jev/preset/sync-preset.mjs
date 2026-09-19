@@ -59,6 +59,12 @@ if (/^\s*-\s*id:\s*jev-evaluate\s*$/m.test(withoutTrailingBlankLines)) {
 }
 
 const target = join(import.meta.dirname, 'conditioned-reflex', 'agent.cordis.yml')
-writeFileSync(target, `${withoutTrailingBlankLines}\n${ROW}`)
-console.log(`wrote ${target}`)
+// `--dry-run` 必须真的什么都不写 —— 根 install.mjs 会带着它跑一遍，
+// 而那个参数的承诺是"先看它会做什么"。
+if (process.argv.includes('--dry-run')) {
+  console.log(`  --  dry-run: would write ${target}`)
+} else {
+  writeFileSync(target, `${withoutTrailingBlankLines}\n${ROW}`)
+  console.log(`wrote ${target}`)
+}
 console.log(`install with: copy ${join(import.meta.dirname, 'conditioned-reflex')} to <DSH_HOME>/.agent-presets/conditioned-reflex/`)
